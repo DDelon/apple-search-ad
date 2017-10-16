@@ -23,6 +23,16 @@ $grid = 10985381;
 
 $rep = new \searchad\reports\ReportingRequest();
 
+$resp = new \searchad\ApiResponse();
+
+//$html = "<!DOCTYPE html><html><head><title>Apache Tomcat/8.5.11 - Error report</title><style type=\"text/css\">h1 {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:22px;} h2 {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:16px;} h3 {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:14px;} body {font-family:Tahoma,Arial,sans-serif;color:black;background-color:white;} b {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;} p {font-family:Tahoma,Arial,sans-serif;background:white;color:black;font-size:12px;} a {color:black;} a.name {color:black;} .line {height:1px;background-color:#525D76;border:none;}</style> </head><body><h1>HTTP Status 401 - </h1><div class=\"line\"></div><p><b>type</b> Status report</p><p><b>message</b> <u></u></p><p><b>description</b> <u>This request requires HTTP authentication.</u></p><hr class=\"line\"><h3>Apache Tomcat/8.5.11</h3></body></html>";
+//try {
+//    $resp->loadResponse($html,[]);
+//} catch(\Exception $e){
+//    var_dump($e->getMessage());
+//}
+//exit;
+
 $repParams = '{
     "startTime": "2016-01-01T00:00:00.000",
     "endTime": "2017-10-01T00:00:00.000",
@@ -33,12 +43,109 @@ $repParams = '{
 }';
 
 $rep->loadCertificates(__DIR__ . '/test.pem', __DIR__ . '/test.key');
+
+//--------------------
+$resp->addCallback(function ($params) {
+    var_dump($params['_request']['request_time']);
+}, []);
+$rep->loadCertificates(__DIR__ . '/pixel-gun/alexey.pem', __DIR__ . '/pixel-gun/alexey.key');
+$sel = new \searchad\selector\Selector();
+if (isset($params['SearchtermsSearch']['adGroupId'])) {
+    //filtering by adGroupId if it is set
+    $sel->setConditions([
+        ['field' => 'adGroupId', 'operator' => 'EQUALS', 'values' => [$params['SearchtermsSearch']['adGroupId']]]
+    ]);
+}
+
+$offset = 0;
+$topTime = 50000;
+$start = microtime(true)*1000;
+$curlTimeout = $topTime;
+$limit = 1000;
+while (1) {
+    $queryTimes = [];
+
+    $beforeTime = microtime(true)*1000;
+    $selData = $sel
+        ->orderBy("localSpend", \searchad\selector\Selector::SORT_DESC)
+        ->setLimit($limit)
+        ->selectFields(['searchTermText'])
+        ->setOffset($offset)
+        ->getSelector();
+
+    var_dump("timeout: ".$curlTimeout);
+
+    try {
+        $repCmp = new \searchad\campaign\CampaignRequest();
+        $repCmp->loadCertificates(__DIR__ . '/pixel-gun/alexey.pem', __DIR__ . '/pixel-gun/alexey.key');
+        $repCmp->setOrgId(49470)
+//        $repCmp->setOrgId(334460)
+            ->queryCampaigns('640111933');
+//        $rep->setStartTime('2017-07-01')
+//            ->setOrgId(49470)
+//            ->setEndTime('2017-07-30')
+//            ->setSelector($selData)
+//            ->setReturnRowTotals(true)
+//            ->setCurlOptions([CURLOPT_TIMEOUT_MS => (int)$curlTimeout])
+//            ->setReturnRecordsWithNoMetrics(false)
+//            ->queryReportsSearchTerm(8661848);
+
+        var_dump($repCmp->getCurlInfo());
+
+        $resp->loadResponse($repCmp->getRawResponse(), $repCmp->getCurlInfo(), $repCmp->getLastRequestInfo());
+        var_dump($resp->totalCount());
+        var_dump($resp->returnedCount());
+
+
+//        foreach($resp->getData() as $row){
+//            var_dump($row['name'], $row['orgId']);
+//            exit;
+//        }
+
+
+
+        //time
+        $currentTime = microtime(true)*1000;
+        $queryTimes[] = $currentTime - $beforeTime;
+        if (($currentTime - $beforeTime) > $topTime * 0.5) {
+            var_dump($queryTimes);
+            echo "Last query take too long, no time for next request\n";
+            break;
+        }
+        $avgTime = array_sum($queryTimes) / count($queryTimes);
+
+        $leftTime = $topTime - ($currentTime - $start);
+        $curlTimeout = $leftTime;
+        var_dump($leftTime);
+
+        if($leftTime<$avgTime){
+            var_dump($queryTimes);
+            echo "No time for next request\n";
+            break;
+        }
+
+        //end of time handle
+        $offset += $limit;
+        if (!$resp->returnedCount()) {
+            break;
+        }
+    } catch (\Exception $e) {
+        var_dump($e->getMessage());
+        exit;
+    }
+
+
+}
+exit;
+
+///--------------------------------
+///
 $cb = function ($params) use ($rep) {
 
-    var_dump("Callback for request mode");
-    if($rep->getRequestType() === 'R'){
-        $rep->setAllowRun(false);
-    }
+//    var_dump("Callback for request mode");
+//    if($rep->getRequestType() === 'R'){
+//        $rep->setAllowRun(false);
+//    }
 };
 
 $rep->addBeforeRequestCallback($cb, ['234']);
@@ -70,10 +177,14 @@ $resp->addCallback(function ($params) {
     var_dump("response callback");
     var_dump($params);
 }, []);
-$resp->loadResponse($rep->getRawResponse(), $rep->getCurlInfo());
+try {
+    $resp->loadResponse($rep->getRawResponse(), $rep->getCurlInfo());
+} catch (\Exception $e) {
+    var_dump($e->getMessage());
+}
 
-
-var_dump(json_decode($rep->getRawResponse()), $rep->getRequestBody(true));
+//var_dump($rep->getRawResponse());
+var_dump(json_decode($resp->isHttpCodeOk()));
 //$api = new \searchad\campaign\CampaignRequest();
 
 //$api->addBeforeRequestCallback(function ($params) {

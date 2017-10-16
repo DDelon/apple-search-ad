@@ -1,3 +1,27 @@
+# 1.1.19
+ - Allowing to group by array of fields in `ReporingRequest`
+
+# 1.1.18
+ - Adding `BudgetOrdersRequest` class
+ - Adding `apps\appinfo` method into `search\AppsRequest` class
+
+# 1.1.17
+ - Adding `_curl_info` field to callback params array containing `curl_getinfo` data
+ - Fixed manual setting of curl options by `->setCurlOptions`
+
+# 1.1.16
+ - Adding `errorCode` field in callback params
+ - Adding http code in callback params in case of validation error
+
+# 1.1.15
+ - Adding `locality` and `gender` fields into group-by available fields for reports
+
+# 1.1.14
+ - Adding `campaign` and `adGroup` serving state constants and get-methods:
+  
+   - `CampaignResponse::getServingStateReasons`
+   - `CampaignResponse::getAdGroupServingStateReasons`
+
 # 1.1.13
  - Adding lastRequestInfo to ApiResponse in loadData
 

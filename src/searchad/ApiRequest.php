@@ -87,12 +87,10 @@ class ApiRequest extends BaseApi
             throw new \Exception("SSL certificate or key is not set");
         }
         $this->curlInfo = [];
-        $this->curlOptions = [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_SSLCERT => $this->pemFile,
-            CURLOPT_SSLKEY => $this->keyFile,
-            CURLOPT_SSLCERTTYPE => 'PEM'
-        ];
+        $this->curlOptions [CURLOPT_RETURNTRANSFER] = true;
+        $this->curlOptions [CURLOPT_SSLCERT] = $this->pemFile;
+        $this->curlOptions [CURLOPT_SSLKEY] = $this->keyFile;
+        $this->curlOptions [CURLOPT_SSLCERTTYPE] = 'PEM';
     }
 
     /**
@@ -269,6 +267,7 @@ class ApiRequest extends BaseApi
         foreach ($this->callbacks as $callback) {
             list($cb, $params) = $callback;
             $params['_request'] = $this->lastRequestInfo;
+            $params['_curl_info'] = $this->getCurlInfo();
             call_user_func_array($cb, ['params' => [$params]]);
         }
         return $this;
@@ -406,8 +405,8 @@ class ApiRequest extends BaseApi
         $this->curlOptions[CURLOPT_POST] = true;
         if ($this->body) {
             $this->curlOptions[CURLOPT_POSTFIELDS] = $this->body;
-            $this->setRequestHeader('Content-type', 'application/json');
         }
+        $this->setRequestHeader('Content-type', 'application/json');
 
         return $this;
     }
